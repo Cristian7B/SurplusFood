@@ -1,180 +1,192 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, KeyboardAvoidingView, Platform
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
-import { register as registerService } from '../services/auth.service';
+import { colors } from '../theme/colors';
+
+type AccountType = 'donor' | 'beneficiary' | null;
 
 export default function RegisterScreen({ navigation }: any) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [accountType, setAccountType] = useState<AccountType>(null);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleRegister = async () => {
-    try {
-      await registerService(email, password);
-      Alert.alert('Success', 'Account created successfully');
-      navigation.navigate('Login');
-    } catch (error) {
-      Alert.alert('Error', 'Registration failed');
-    }
+  const handleNext = () => {
+    if (!accountType) return;
+    setStep(2);
+  };
+
+  const handleRegister = () => {
+    // TODO: conectar con backend
+    navigation.navigate('Home');
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.background}
+      style={styles.bg}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.topSection}>
-        <Text style={styles.logo}>🥗</Text>
-        <Text style={styles.appName}>SurplusFood</Text>
-        <Text style={styles.tagline}>Reduce waste, feed the community</Text>
-      </View>
+      <ScrollView contentContainerStyle={styles.content} bounces={false}>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Create account</Text>
-        <Text style={styles.cardSubtitle}>Join the community</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email address"
-          placeholderTextColor="#aaa"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#aaa"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Register</Text>
-        </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => step === 2 ? setStep(1) : navigation.goBack()}>
+            <Text style={styles.backText}>← Volver</Text>
+          </TouchableOpacity>
+          <View style={styles.logoRow}>
+            <View style={styles.logoDot}>
+              <Text style={{ fontSize: 16 }}>🌿</Text>
+            </View>
+            <Text style={styles.logoText}>SurplusFood</Text>
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.registerText}>Already have an account? Sign in</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Step indicator */}
+        <View style={styles.stepRow}>
+          <View style={[styles.stepDot, styles.stepActive]} />
+          <View style={[styles.stepLine, step === 2 && styles.stepLineDone]} />
+          <View style={[styles.stepDot, step === 2 && styles.stepActive]} />
+        </View>
+
+        <View style={styles.card}>
+          {step === 1 ? (
+            <>
+              <Text style={styles.cardTitle}>¿Cómo vas a usar SurplusFood?</Text>
+              <Text style={styles.cardSub}>Elige el tipo de cuenta que mejor te describe</Text>
+
+              <TouchableOpacity
+                style={[styles.typeCard, accountType === 'donor' && styles.typeCardSelected]}
+                onPress={() => setAccountType('donor')}
+              >
+                <Text style={styles.typeIcon}>🏪</Text>
+                <View style={styles.typeText}>
+                  <Text style={styles.typeTitle}>Soy donante</Text>
+                  <Text style={styles.typeSub}>Cafetería, restaurante o negocio que quiere donar surplus</Text>
+                </View>
+                <View style={[styles.typeRadio, accountType === 'donor' && styles.typeRadioSelected]}>
+                  {accountType === 'donor' && <View style={styles.typeRadioDot} />}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.typeCard, accountType === 'beneficiary' && styles.typeCardSelected]}
+                onPress={() => setAccountType('beneficiary')}
+              >
+                <Text style={styles.typeIcon}>🤝</Text>
+                <View style={styles.typeText}>
+                  <Text style={styles.typeTitle}>Soy beneficiario</Text>
+                  <Text style={styles.typeSub}>Persona o organización que quiere recibir alimentos</Text>
+                </View>
+                <View style={[styles.typeRadio, accountType === 'beneficiary' && styles.typeRadioSelected]}>
+                  {accountType === 'beneficiary' && <View style={styles.typeRadioDot} />}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.btnPrimary, !accountType && styles.btnDisabled]}
+                onPress={handleNext}
+                disabled={!accountType}
+              >
+                <Text style={styles.btnPrimaryText}>Continuar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.btnSecondary} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.btnSecondaryText}>¿Ya tienes cuenta? Inicia sesión</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.cardTitle}>Crea tu cuenta</Text>
+              <Text style={styles.cardSub}>
+                {accountType === 'donor' ? '🏪 Cuenta donante' : '🤝 Cuenta beneficiario'}
+              </Text>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Nombre completo</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Tu nombre"
+                  placeholderTextColor={colors.textMuted}
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Correo electrónico</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="tu@correo.com"
+                  placeholderTextColor={colors.textMuted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Contraseña</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+              </View>
+
+              <TouchableOpacity style={styles.btnPrimary} onPress={handleRegister}>
+                <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    backgroundColor: '#1b5e20',
+  bg: { flex: 1, backgroundColor: colors.cream },
+  content: { flexGrow: 1, padding: 24, paddingTop: 60 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  backBtn: { padding: 4 },
+  backText: { fontSize: 13, color: colors.textMuted },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoDot: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, paddingHorizontal: 8 },
+  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.border },
+  stepActive: { backgroundColor: colors.green },
+  stepLine: { flex: 1, height: 1.5, backgroundColor: colors.border, marginHorizontal: 6 },
+  stepLineDone: { backgroundColor: colors.green },
+  card: { backgroundColor: colors.cream2, borderRadius: 16, padding: 28, borderWidth: 0.5, borderColor: colors.border, gap: 14 },
+  cardTitle: { fontSize: 22, fontWeight: '500', color: colors.text },
+  cardSub: { fontSize: 13, color: colors.textMuted, marginTop: -8 },
+  typeCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 0.5, borderColor: colors.border,
+    borderRadius: 12, padding: 16, backgroundColor: colors.cream,
   },
-  topSection: {
-    flex: 0.6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  logo: {
-    fontSize: 64,
-    marginBottom: 12,
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: 14,
-    color: '#a5d6a7',
-    marginTop: 6,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 32,
-    paddingBottom: 48,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1b5e20',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 24,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-    fontSize: 15,
-    color: '#333',
-    backgroundColor: '#fafafa',
-  },
-  button: {
-    backgroundColor: '#2e7d32',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
-    shadowColor: '#2e7d32',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    color: '#aaa',
-    fontSize: 13,
-  },
-  registerButton: {
-    borderWidth: 1.5,
-    borderColor: '#2e7d32',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  registerText: {
-    color: '#2e7d32',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  typeCardSelected: { borderColor: colors.green, backgroundColor: colors.greenLight },
+  typeIcon: { fontSize: 28 },
+  typeText: { flex: 1 },
+  typeTitle: { fontSize: 14, fontWeight: '500', color: colors.text },
+  typeSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, lineHeight: 17 },
+  typeRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
+  typeRadioSelected: { borderColor: colors.green },
+  typeRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.green },
+  field: { gap: 6 },
+  label: { fontSize: 12, fontWeight: '500', color: colors.textMuted, letterSpacing: 0.3 },
+  input: { backgroundColor: colors.cream, borderWidth: 0.5, borderColor: colors.border, borderRadius: 10, padding: 13, fontSize: 14, color: colors.text },
+  btnPrimary: { backgroundColor: colors.green, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 4 },
+  btnDisabled: { opacity: 0.4 },
+  btnPrimaryText: { color: colors.white, fontSize: 15, fontWeight: '500' },
+  btnSecondary: { borderWidth: 0.5, borderColor: colors.green, padding: 15, borderRadius: 10, alignItems: 'center' },
+  btnSecondaryText: { color: colors.greenDark, fontSize: 15, fontWeight: '500' },
 });
