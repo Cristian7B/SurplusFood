@@ -1,8 +1,9 @@
 export default {
   expo: {
-    name: "frontend",
-    slug: "frontend",
+    name: "SurplusFood",
+    slug: "surplusfood",
     version: "1.0.0",
+    scheme: "foodbridge",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -10,27 +11,33 @@ export default {
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff"
+      backgroundColor: "#F7F4EE",
     },
     ios: {
-      supportsTablet: true
+      supportsTablet: false,
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#F7F4EE",
       },
-      package: "com.anonymous.frontend",
+      package: "com.surplusfood.app",
       edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false
+      predictiveBackGestureEnabled: false,
     },
     web: {
-      favicon: "./assets/favicon.png"
+      bundler: "metro",
+      favicon: "./assets/favicon.png",
     },
     plugins: [
-      [
-        "@rnmapbox/maps"
-      ]
-    ]
-  }
+      "expo-router",
+      "@rnmapbox/maps",
+      "expo-location",
+    ],
+    extra: {
+      router: { origin: false },
+      eas: { projectId: "your-eas-project-id" },
+    },
+  },
 };
+

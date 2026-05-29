@@ -27,7 +27,7 @@ export default function HomeScreen({ navigation }: any) {
         <TouchableOpacity style={[styles.navItem, styles.navActive]}>
           <Text style={styles.navIcon}>🏠</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Map')}>
           <Text style={styles.navIcon}>📍</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PublishSurplus')}>
