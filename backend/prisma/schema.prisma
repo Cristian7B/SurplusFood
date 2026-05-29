@@ -10,15 +10,72 @@ datasource db {
 
 enum Role {
   DONOR
-  RECIPIENT
+  BENEFICIARY
   CHARITY
   ADMIN
 }
 
+enum SurplusStatus {
+  PUBLISHED
+  ASSIGNED
+  PICKED_UP
+  EXPIRED
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  role      Role     @default(RECIPIENT)
-  createdAt DateTime @default(now())
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  password            String
+  name                String?
+  role                Role      @default(BENEFICIARY)
+  /// Habitual latitude for proximity-based matching
+  latitude            Float?
+  /// Habitual longitude for proximity-based matching
+  longitude           Float?
+  /// Score from 0.0 to 1.0 tracking pickup reliability (1.0 = perfect)
+  reliabilityScore    Float     @default(1.0)
+  /// Cumulative no-show count; used to restrict repeated offenders
+  noShowCount         Int       @default(0)
+  /// Whether the user is a verified charity — affects matching priority
+  isVerifiedCharity   Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  surplusDonated      Surplus[] @relation("DonorSurplus")
+  surplusReceived     Surplus[] @relation("RecipientSurplus")
+}
+
+model Surplus {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  imageUrl        String?
+  /// Weight of the surplus in kilograms
+  quantityKg      Float
+  /// Optional unit count (e.g., number of meal trays)
+  quantityUnits   Int?
+  /// Category descriptor: e.g. "cooked", "bakery", "produce", "packaged"
+  foodType        String
+  /// Hard expiration — surplus cannot be matched after this timestamp
+  expirationAt    DateTime
+  /// Earliest time a recipient can collect the surplus
+  pickupStartAt   DateTime
+  /// Latest time a recipient can collect (must be <= expirationAt)
+  pickupEndAt     DateTime
+  status          SurplusStatus @default(PUBLISHED)
+  donorId         String
+  assignedUserId  String?
+  /// Decimal latitude of the pickup point
+  latitude        Float
+  /// Decimal longitude of the pickup point
+  longitude       Float
+  location        Unsupported("geography(Point, 4326)")?
+  // NOTE: PostGIS `location geography(Point,4326)` column is managed via
+  // raw SQL migration (see migrations/add_postgis_location.sql) because
+  // Prisma does not support PostGIS geography types natively.
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  donor           User          @relation("DonorSurplus", fields: [donorId], references: [id])
+  assignedUser    User?         @relation("RecipientSurplus", fields: [assignedUserId], references: [id])
 }
