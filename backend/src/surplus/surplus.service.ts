@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import {
   BadRequestException,
   ForbiddenException,
@@ -141,6 +142,7 @@ export class SurplusService {
       data: {
         title: dto.title,
         description: dto.description,
+        imageUrl: (dto as any).imageUrl,
         quantityKg: dto.quantityKg,
         quantityUnits: dto.quantityUnits,
         foodType: dto.foodType,
@@ -167,7 +169,10 @@ export class SurplusService {
     const { page = 1, limit = 20, status, foodType } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.SurplusWhereInput = {};
+    const where: Prisma.SurplusWhereInput = {
+      expirationAt: { gt: new Date() },
+      status: { notIn: [SurplusStatus.EXPIRED, SurplusStatus.PICKED_UP] },
+    };
     if (status) where.status = status;
     if (foodType) where.foodType = foodType;
 

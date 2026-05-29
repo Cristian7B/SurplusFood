@@ -24,6 +24,11 @@ export class CreateSurplusDto {
   @IsOptional()
   description?: string;
 
+  @ApiPropertyOptional({ example: '/uploads/surplus.jpg' })
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
   @ApiProperty({ example: 8.5, description: 'Weight in kilograms' })
   @IsNumber()
   @Min(0.1)

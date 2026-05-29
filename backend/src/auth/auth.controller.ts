@@ -16,7 +16,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'User created successfully.' })
   @ApiResponse({ status: 400, description: 'Email already registered or validation error.' })
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password);
+    return this.authService.register(dto.email, dto.password, dto.name, dto.role);
   }
 
   @Post('login')

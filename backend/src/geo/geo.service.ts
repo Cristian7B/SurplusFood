@@ -91,7 +91,7 @@ export class GeoService {
   }
 
   /**
-   * Finds users (RECIPIENT or CHARITY) within `radiusM` metres of a point.
+   * Finds users (BENEFICIARY or CHARITY) within `radiusM` metres of a point.
    * Used by the matching engine to build the candidate pool.
    */
   async findNearbyUsers(
@@ -119,7 +119,7 @@ export class GeoService {
         ) AS distance_m
       FROM "User" u
       WHERE
-        u.role IN ('RECIPIENT', 'CHARITY')
+        u.role IN ('BENEFICIARY', 'CHARITY')
         AND u.latitude IS NOT NULL
         AND u.longitude IS NOT NULL
         AND u."noShowCount" < 3

@@ -24,7 +24,7 @@ function makeCandidate(overrides: Partial<any> = {}): any {
   return {
     id: 'user-1',
     email: 'recipient@test.com',
-    role: 'RECIPIENT',
+    role: 'BENEFICIARY',
     isVerifiedCharity: false,
     reliabilityScore: 0.9,
     noShowCount: 0,

@@ -150,11 +150,11 @@ describe('SurplusService — temporal validation', () => {
       );
     });
 
-    it('rejects RECIPIENT role trying to create surplus', async () => {
+    it('rejects BENEFICIARY role trying to create surplus', async () => {
       const dto = makeValidDto();
-      const recipient = makeDonor({ role: Role.RECIPIENT });
+      const beneficiary = makeDonor({ role: Role.BENEFICIARY });
 
-      await expect(service.create(dto, recipient)).rejects.toThrow(ForbiddenException);
+      await expect(service.create(dto, beneficiary)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -189,7 +189,7 @@ describe('SurplusService — temporal validation', () => {
       mockPrisma['user'] = { update: jest.fn() };
       (mockPrisma as any).user = { update: jest.fn().mockResolvedValue({}) };
 
-      const user = { id: 'user-1', role: Role.RECIPIENT };
+      const user = { id: 'user-1', role: Role.BENEFICIARY };
       const result = await service.reject('surplus-1', user as any);
 
       expect(result.status).toBe(SurplusStatus.PUBLISHED);

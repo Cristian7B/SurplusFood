@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-
+import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,7 +11,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string, name?: string, roleInput?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -23,10 +22,27 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Normalize role
+    let role: Role = Role.BENEFICIARY;
+    if (roleInput) {
+      const normalized = roleInput.toUpperCase();
+      if (normalized === 'DONOR') {
+        role = Role.DONOR;
+      } else if (normalized === 'BENEFICIARY' || normalized === 'RECIPIENT') {
+        role = Role.BENEFICIARY;
+      } else if (normalized === 'CHARITY') {
+        role = Role.CHARITY;
+      } else if (normalized === 'ADMIN') {
+        role = Role.ADMIN;
+      }
+    }
+
     const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
+        name,
+        role,
       },
     });
 
@@ -35,6 +51,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        name: user.name,
+        role: user.role,
       },
     };
   }
@@ -57,10 +75,17 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     return {
       access_token: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
     };
   }
 }

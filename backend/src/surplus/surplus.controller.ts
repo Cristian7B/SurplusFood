@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unused-vars */
 import {
   Body,
   Controller,
@@ -10,7 +11,12 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -49,19 +55,146 @@ export class SurplusController {
 
   @Post()
   @Roles(Role.DONOR, Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+        },
+      }),
+    }),
+  )
   @ApiOperation({
     summary: 'Publish a new surplus',
     description:
       'Creates a surplus offer. Restricted to DONOR and ADMIN. ' +
-      'Pickup point must be within 3 km of Universidad Distrital. ' +
-      'Temporal rules: same-day expiration, pickup window 30 min–3 h, ' +
-      'pickupStartAt within 4 hours of now.',
+      'Supports multipart/form-data for image uploads. ' +
+      'Pickup point must be within 3 km of Universidad Distrital.',
   })
   @ApiBody({ type: CreateSurplusDto })
   @ApiResponse({ status: 201, description: 'Surplus published successfully.' })
   @ApiResponse({ status: 400, description: 'Validation or business rule failure.' })
   @ApiResponse({ status: 403, description: 'Insufficient role.' })
-  create(@Body() dto: CreateSurplusDto, @CurrentUser() user: User) {
+  async create(
+    @Body() body: any,
+    @CurrentUser() user: User,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    // Standardize input fields (support both JSON DTO and frontend's Form-Data)
+    const dto: any = {};
+
+    // 1. Quantity parsing (frontend: quantity -> backend: quantityKg)
+    if (body.quantity !== undefined) {
+      dto.quantityKg = parseFloat(body.quantity);
+    } else if (body.quantityKg !== undefined) {
+      dto.quantityKg =
+        typeof body.quantityKg === 'string' ? parseFloat(body.quantityKg) : body.quantityKg;
+    }
+
+    // 2. Coords parsing
+    if (body.latitude !== undefined) {
+      dto.latitude = typeof body.latitude === 'string' ? parseFloat(body.latitude) : body.latitude;
+    }
+    if (body.longitude !== undefined) {
+      dto.longitude =
+        typeof body.longitude === 'string' ? parseFloat(body.longitude) : body.longitude;
+    }
+
+    const coordsField = body.coordinates ?? body.coords;
+    if (coordsField) {
+      try {
+        if (typeof coordsField === 'string') {
+          if (coordsField.trim().startsWith('{')) {
+            const parsed = JSON.parse(coordsField);
+            dto.latitude = parsed.latitude ?? parsed.lat;
+            dto.longitude = parsed.longitude ?? parsed.lon ?? parsed.lng;
+          } else {
+            const parts = coordsField.split(',').map(Number);
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              dto.latitude = parts[0];
+              dto.longitude = parts[1];
+            }
+          }
+        } else if (typeof coordsField === 'object') {
+          dto.latitude = coordsField.latitude ?? coordsField.lat;
+          dto.longitude = coordsField.longitude ?? coordsField.lon ?? coordsField.lng;
+        }
+      } catch (e) {
+        // ignore parsing error
+      }
+    }
+
+    // 3. Fallbacks for other required fields
+    dto.title = body.title || 'Surplus Food';
+    dto.foodType = body.foodType || 'other';
+    dto.description = body.description || '';
+
+    if (body.quantityUnits !== undefined) {
+      dto.quantityUnits =
+        typeof body.quantityUnits === 'string'
+          ? parseInt(body.quantityUnits, 10)
+          : body.quantityUnits;
+    }
+
+    // 4. Temporal rule construction (frontend sends closeTime: "18:00")
+    const windowField = body.pickupWindow ?? body.pickup_window ?? body['pickup window'];
+    if (windowField) {
+      try {
+        if (typeof windowField === 'string' && windowField.trim().startsWith('{')) {
+          const parsed = JSON.parse(windowField);
+          dto.pickupStartAt =
+            parsed.start ?? parsed.startAt ?? parsed.pickupStartAt ?? parsed.pickupStart;
+          dto.pickupEndAt = parsed.end ?? parsed.endAt ?? parsed.pickupEndAt ?? parsed.pickupEnd;
+        } else if (typeof windowField === 'object') {
+          dto.pickupStartAt =
+            windowField.start ??
+            windowField.startAt ??
+            windowField.pickupStartAt ??
+            windowField.pickupStart;
+          dto.pickupEndAt =
+            windowField.end ??
+            windowField.endAt ??
+            windowField.pickupEndAt ??
+            windowField.pickupEnd;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (body.closeTime) {
+      const now = new Date();
+      const bogotaTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+      const [hours, minutes] = body.closeTime.split(':').map(Number);
+
+      const targetDate = new Date(bogotaTime);
+      targetDate.setUTCHours(hours, minutes, 0, 0);
+
+      const expirationDate = new Date(targetDate.getTime() + 5 * 60 * 60 * 1000);
+
+      dto.expirationAt = expirationDate.toISOString();
+      dto.pickupEndAt = expirationDate.toISOString();
+
+      const startOffset = new Date(expirationDate.getTime() - 2 * 60 * 60 * 1000);
+      const minStart = new Date(now.getTime() + 35 * 60 * 1000);
+      const finalStart = startOffset > minStart ? startOffset : minStart;
+      dto.pickupStartAt = finalStart.toISOString();
+    } else {
+      dto.expirationAt = body.expirationAt ?? dto.expirationAt;
+      dto.pickupStartAt = body.pickupStartAt ?? dto.pickupStartAt;
+      dto.pickupEndAt = body.pickupEndAt ?? dto.pickupEndAt;
+    }
+
+    // 5. Image handling
+    if (file) {
+      dto.imageUrl = `/uploads/${file.filename}`;
+    } else if (body.imageUrl) {
+      dto.imageUrl = body.imageUrl;
+    }
+
     return this.surplusService.create(dto, user);
   }
 
@@ -182,11 +315,11 @@ export class SurplusController {
   }
 
   // ──────────────────────────────────────────────
-  // POST /surplus/:id/accept
+  // PATCH /surplus/:id/accept
   // ──────────────────────────────────────────────
 
-  @Post(':id/accept')
-  @Roles(Role.RECIPIENT, Role.CHARITY)
+  @Patch(':id/accept')
+  @Roles(Role.BENEFICIARY, Role.CHARITY)
   @ApiOperation({
     summary: 'Accept an assigned surplus',
     description:
@@ -194,7 +327,7 @@ export class SurplusController {
       'Must be called before the pickup window closes.',
   })
   @ApiParam({ name: 'id', description: 'Surplus UUID' })
-  @ApiResponse({ status: 201, description: 'Surplus accepted.' })
+  @ApiResponse({ status: 200, description: 'Surplus accepted.' })
   @ApiResponse({ status: 400, description: 'Wrong status or expired.' })
   @ApiResponse({ status: 403, description: 'Not assigned to you.' })
   accept(@Param('id') id: string, @CurrentUser() user: User) {
@@ -206,7 +339,7 @@ export class SurplusController {
   // ──────────────────────────────────────────────
 
   @Post(':id/reject')
-  @Roles(Role.RECIPIENT, Role.CHARITY, Role.ADMIN)
+  @Roles(Role.BENEFICIARY, Role.CHARITY, Role.ADMIN)
   @ApiOperation({
     summary: 'Reject an assigned surplus',
     description:

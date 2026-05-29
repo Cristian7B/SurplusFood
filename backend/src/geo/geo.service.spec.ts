@@ -48,8 +48,8 @@ describe('GeoService', () => {
   });
 
   describe('findNearbyUsers', () => {
-    it('queries database for eligible nearby recipients and charities', async () => {
-      const mockUsers = [{ id: 'user-1', role: 'RECIPIENT', distance_m: 150 }];
+    it('queries database for eligible nearby beneficiaries and charities', async () => {
+      const mockUsers = [{ id: 'user-1', role: 'BENEFICIARY', distance_m: 150 }];
       mockPrisma.$queryRaw.mockResolvedValue(mockUsers);
 
       const result = await service.findNearbyUsers(4.6351, -74.0703, 1000);

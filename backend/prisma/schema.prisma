@@ -10,7 +10,7 @@ datasource db {
 
 enum Role {
   DONOR
-  RECIPIENT
+  BENEFICIARY
   CHARITY
   ADMIN
 }
@@ -27,7 +27,7 @@ model User {
   email               String    @unique
   password            String
   name                String?
-  role                Role      @default(RECIPIENT)
+  role                Role      @default(BENEFICIARY)
   /// Habitual latitude for proximity-based matching
   latitude            Float?
   /// Habitual longitude for proximity-based matching
@@ -49,6 +49,7 @@ model Surplus {
   id              String        @id @default(uuid())
   title           String
   description     String?
+  imageUrl        String?
   /// Weight of the surplus in kilograms
   quantityKg      Float
   /// Optional unit count (e.g., number of meal trays)
@@ -68,6 +69,7 @@ model Surplus {
   latitude        Float
   /// Decimal longitude of the pickup point
   longitude       Float
+  location        Unsupported("geography(Point, 4326)")?
   // NOTE: PostGIS `location geography(Point,4326)` column is managed via
   // raw SQL migration (see migrations/add_postgis_location.sql) because
   // Prisma does not support PostGIS geography types natively.
