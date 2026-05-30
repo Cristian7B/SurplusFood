@@ -1,27 +1,50 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { register as registerService } from '../services/auth.service';
 
 type AccountType = 'donor' | 'beneficiary' | null;
 
 export default function RegisterScreen({ navigation }: any) {
+  const { login } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const [accountType, setAccountType] = useState<AccountType>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleNext = () => {
     if (!accountType) return;
     setStep(2);
   };
 
-  const handleRegister = () => {
-    // TODO: conectar con backend
-    navigation.navigate('Home');
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Faltan datos', 'Por favor completa todos los campos.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Contraseña muy corta', 'Debe tener al menos 6 caracteres.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const role = accountType === 'donor' ? 'DONOR' : 'BENEFICIARY';
+      const data = await registerService(email, password, name, role);
+      // data = { access_token: string, user: { id, name, email, role } }
+      await login(data.access_token, data.user);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message ?? 'No se pudo crear la cuenta. Intenta de nuevo.';
+      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,7 +56,10 @@ export default function RegisterScreen({ navigation }: any) {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => step === 2 ? setStep(1) : navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => step === 2 ? setStep(1) : navigation.goBack()}
+          >
             <Text style={styles.backText}>← Volver</Text>
           </TouchableOpacity>
           <View style={styles.logoRow}>
@@ -140,8 +166,15 @@ export default function RegisterScreen({ navigation }: any) {
                 />
               </View>
 
-              <TouchableOpacity style={styles.btnPrimary} onPress={handleRegister}>
-                <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
+              <TouchableOpacity
+                style={[styles.btnPrimary, loading && styles.btnDisabled]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading
+                  ? <ActivityIndicator color={colors.white} />
+                  : <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
+                }
               </TouchableOpacity>
             </>
           )}

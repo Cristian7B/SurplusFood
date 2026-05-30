@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
@@ -7,14 +7,13 @@ export type UserRole = 'DONOR' | 'BENEFICIARY' | 'CHARITY' | 'ADMIN' | null;
 interface AuthContextType {
   token: string | null;
   role: UserRole;
-  userName: string | null;
-  login: (token: string, role: UserRole, name?: string) => void;
-  logout: () => void;
-  /** Quick-login with seeded test credentials for development bypassing */
+  user: any | null;
+  isLoading: boolean;
+  login: (token: string, userData: any) => Promise<void>;
+  logout: () => Promise<void>;
   loginAsTestUser: (preset: TestUserPreset) => Promise<void>;
 }
 
-// Seeded test users (matching prisma/seed.ts)
 export type TestUserPreset =
   | 'donor1'
   | 'donor2'
@@ -35,45 +34,60 @@ const TEST_PASSWORD = 'password123';
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
-  const [userName, setUserName] = useState<string | null>(null);
+  const [token, setToken]         = useState<string | null>(null);
+  const [role, setRole]           = useState<UserRole>(null);
+  const [user, setUser]           = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (newToken: string, newRole: UserRole, name?: string) => {
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const savedToken = await AsyncStorage.getItem('token');
+        const savedUser  = await AsyncStorage.getItem('user');
+        if (savedToken && savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          setToken(savedToken);
+          setUser(parsedUser);
+          setRole(parsedUser.role ?? null);
+        }
+      } catch (e) {
+        console.error('Error restaurando sesión:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    restore();
+  }, []);
+
+  const login = async (newToken: string, userData: any) => {
     setToken(newToken);
-    setRole(newRole);
-    setUserName(name ?? null);
-    AsyncStorage.setItem('token', newToken);
-    if (newRole) AsyncStorage.setItem('role', newRole);
+    setUser(userData);
+    setRole(userData.role ?? null);
+    await AsyncStorage.setItem('token', newToken);
+    await AsyncStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
     setToken(null);
+    setUser(null);
     setRole(null);
-    setUserName(null);
-    AsyncStorage.multiRemove(['token', 'role']);
+    await AsyncStorage.multiRemove(['token', 'user']);
   };
 
-  /**
-   * DEV BYPASS: logs in using a seeded test user so devs can test
-   * maps and features without manually registering.
-   * The other developer can replace this with real auth later.
-   */
   const loginAsTestUser = async (preset: TestUserPreset) => {
     const { email, role: presetRole } = TEST_USERS[preset];
     try {
       const res = await api.post('/auth/login', { email, password: TEST_PASSWORD });
-      const { access_token } = res.data;
-      login(access_token, presetRole, TEST_USERS[preset].label);
+      const { access_token, user: userData } = res.data;
+      await login(access_token, userData ?? { role: presetRole, name: TEST_USERS[preset].label });
     } catch (e: any) {
-      console.warn('[DEV] Test login failed – backend offline?', e?.message);
-      // Fallback: set a dummy token so the UI is navigable even offline
-      login('dev_bypass_token', presetRole, TEST_USERS[preset].label);
+      console.warn('[DEV] Test login fallback – backend offline?', e?.message);
+      await login('dev_bypass_token', { role: presetRole, name: TEST_USERS[preset].label });
     }
   };
 
   return (
-    <AuthContext.Provider value={{ token, role, userName, login, logout, loginAsTestUser }}>
+    <AuthContext.Provider value={{ token, role, user, isLoading, login, logout, loginAsTestUser }}>
       {children}
     </AuthContext.Provider>
   );

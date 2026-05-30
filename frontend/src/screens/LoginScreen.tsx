@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { login as loginService } from '../services/auth.service';
 
 export default function LoginScreen({ navigation }: any) {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: conectar con backend
-    navigation.navigate('Home');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Faltan datos', 'Por favor ingresa tu correo y contraseña.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await loginService(email, password);
+      // data = { access_token: string, user: { id, name, email, role } }
+      await login(data.access_token, data.user);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message ?? 'No se pudo iniciar sesión. Verifica tus datos.';
+      Alert.alert('Error', msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,8 +81,15 @@ export default function LoginScreen({ navigation }: any) {
             />
           </View>
 
-          <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin}>
-            <Text style={styles.btnPrimaryText}>Iniciar sesión</Text>
+          <TouchableOpacity
+            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color={colors.white} />
+              : <Text style={styles.btnPrimaryText}>Iniciar sesión</Text>
+            }
           </TouchableOpacity>
 
           <View style={styles.divider}>
@@ -110,6 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green, padding: 15,
     borderRadius: 10, alignItems: 'center', marginTop: 4,
   },
+  btnDisabled: { opacity: 0.6 },
   btnPrimaryText: { color: colors.white, fontSize: 15, fontWeight: '500' },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 },
   dividerLine: { flex: 1, height: 0.5, backgroundColor: colors.border },
