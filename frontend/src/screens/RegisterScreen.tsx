@@ -38,7 +38,7 @@ export default function RegisterScreen({ navigation }: any) {
       const data = await registerService(email, password, name, role);
       // data = { access_token: string, user: { id, name, email, role } }
       await login(data.access_token, data.user);
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? 'No se pudo crear la cuenta. Intenta de nuevo.';
       Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);

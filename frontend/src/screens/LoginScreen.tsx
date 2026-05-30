@@ -23,7 +23,7 @@ export default function LoginScreen({ navigation }: any) {
       const data = await loginService(email, password);
       // data = { access_token: string, user: { id, name, email, role } }
       await login(data.access_token, data.user);
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? 'No se pudo iniciar sesión. Verifica tus datos.';
       Alert.alert('Error', msg);
