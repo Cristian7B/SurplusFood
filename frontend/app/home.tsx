@@ -197,6 +197,8 @@ export default function HomeScreen() {
               centerCoordinate={userCoord ?? [UD_CENTER.lon, UD_CENTER.lat]}
               animationMode="flyTo"
               animationDuration={1500}
+              pitch={60}     
+              heading={0}  
             />
 
             {/* 3 km radius circle */}
