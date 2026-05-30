@@ -5,16 +5,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '../src/theme/colors';
-import { useAuth, TEST_USERS, TestUserPreset } from '../src/context/AuthContext';
-
-const TEST_PRESETS: TestUserPreset[] = ['donor1', 'donor2', 'beneficiary1', 'beneficiary2', 'charity1'];
+import { useAuth } from '../src/context/AuthContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [testLoading, setTestLoading] = useState<TestUserPreset | null>(null);
-  const { login, loginAsTestUser } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -23,24 +20,16 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      // TODO: the auth developer connects this to the real API
       const api = (await import('../src/services/api')).default;
       const res = await api.post('/auth/login', { email, password });
       const { access_token, user } = res.data;
-      login(access_token, user?.role ?? null, user?.name);
+      login(access_token, user);
       router.replace('/home');
     } catch {
       Alert.alert('Error', 'Credenciales inválidas. Verifica tu correo y contraseña.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleTestLogin = async (preset: TestUserPreset) => {
-    setTestLoading(preset);
-    await loginAsTestUser(preset);
-    setTestLoading(null);
-    router.replace('/home');
   };
 
   return (
@@ -105,32 +94,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* DEV BYPASS: Test user selector */}
-        <View style={styles.devSection}>
-          <View style={styles.devHeader}>
-            <View style={styles.devBadge}><Text style={styles.devBadgeText}>DEV</Text></View>
-            <Text style={styles.devTitle}>Modo de prueba — sin necesidad de registrarse</Text>
-          </View>
-          <Text style={styles.devSub}>
-            Accede directamente con un usuario de prueba del seed de la base de datos (contraseña: password123)
-          </Text>
-          <View style={styles.devGrid}>
-            {TEST_PRESETS.map((preset) => (
-              <TouchableOpacity
-                key={preset}
-                style={[styles.devBtn, testLoading === preset && styles.devBtnLoading]}
-                onPress={() => handleTestLogin(preset)}
-                disabled={testLoading !== null}
-              >
-                {testLoading === preset
-                  ? <ActivityIndicator size="small" color={colors.greenDark} />
-                  : <Text style={styles.devBtnText}>{TEST_USERS[preset].label}</Text>
-                }
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -158,15 +121,4 @@ const styles = StyleSheet.create({
   dividerText: { fontSize: 13, color: colors.textMuted },
   btnSecondary: { borderWidth: 0.5, borderColor: colors.green, padding: 15, borderRadius: 10, alignItems: 'center' },
   btnSecondaryText: { color: colors.greenDark, fontSize: 15, fontWeight: '500' },
-  // DEV BYPASS
-  devSection: { borderRadius: 16, borderWidth: 1, borderColor: colors.amber, backgroundColor: '#FFFBF0', padding: 16, gap: 12 },
-  devHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  devBadge: { backgroundColor: colors.amberDark, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  devBadgeText: { color: colors.white, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
-  devTitle: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
-  devSub: { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
-  devGrid: { gap: 8 },
-  devBtn: { backgroundColor: colors.greenLight, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 0.5, borderColor: colors.green },
-  devBtnLoading: { opacity: 0.6 },
-  devBtnText: { fontSize: 13, fontWeight: '500', color: colors.greenDark },
 });
