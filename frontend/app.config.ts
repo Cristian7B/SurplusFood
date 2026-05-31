@@ -22,6 +22,7 @@ export default {
         backgroundColor: "#F7F4EE",
       },
       package: "com.surplusfood.app",
+      googleServicesFile: "./google-services.json",
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
     },
@@ -33,10 +34,18 @@ export default {
       "expo-router",
       "@rnmapbox/maps",
       "expo-location",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/icon.png",
+          color: "#5DBF95",
+          defaultChannel: "default",
+        },
+      ],
     ],
     extra: {
       router: { origin: false },
-      eas: { projectId: "your-eas-project-id" },
+      eas: { projectId: process.env.EAS_PROJECT_ID ?? "cb81ca31-1e0f-41ce-a1e1-33030beccb0e" },
     },
   },
 };

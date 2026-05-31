@@ -22,7 +22,7 @@ export default function LoginScreen() {
     try {
       const api = (await import('../src/services/api')).default;
       const res = await api.post('/auth/login', { email, password });
-      const { access_token, user } = res.data;
+      const { access_token, user } = res.data.data;
       login(access_token, user);
       router.replace('/home');
     } catch {

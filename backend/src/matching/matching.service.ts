@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GeoService, MAX_RADIUS_M } from '../geo/geo.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SurplusStatus } from '@prisma/client';
 
 export interface ScoredCandidate {
@@ -46,6 +47,7 @@ export class MatchingService {
   constructor(
     private prisma: PrismaService,
     private geo: GeoService,
+    private notifications: NotificationsService,
   ) {}
 
   /**
@@ -141,6 +143,18 @@ export class MatchingService {
 
       return updated;
     });
+
+    // Fetch assigned user's push token and notify them (fire-and-forget)
+    void this.prisma.user
+      .findUnique({ where: { id: best.id }, select: { expoPushToken: true, name: true } })
+      .then((assignedUser) => {
+        if (!assignedUser?.expoPushToken) return;
+        return this.notifications.sendPush(assignedUser.expoPushToken, {
+          title: '🍽️ ¡Tienes un surplus asignado!',
+          body: `Se te ha asignado "${result.title}". Tienes 15 minutos para aceptar o rechazar.`,
+          data: { surplusId: result.id, type: 'SURPLUS_ASSIGNED' },
+        });
+      });
 
     return { surplus: result, assignedTo: best, score: best.score };
   }
