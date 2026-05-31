@@ -197,6 +197,37 @@ export class SurplusService {
   }
 
   // ─────────────────────────────────────────────
+  // READ — MY ASSIGNMENT
+  // ─────────────────────────────────────────────
+
+  async findAssignedTo(userId: string): Promise<(Surplus & { donor: any }) | null> {
+    return this.prisma.surplus.findFirst({
+      where: {
+        assignedUserId: userId,
+        status: SurplusStatus.ASSIGNED,
+        expirationAt: { gt: new Date() },
+      },
+      include: {
+        donor: { select: { id: true, name: true, email: true } },
+      },
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // READ — MY HISTORY
+  // ─────────────────────────────────────────────
+
+  async findHistory(userId: string): Promise<(Surplus & { donor: any })[]> {
+    return this.prisma.surplus.findMany({
+      where: { assignedUserId: userId },
+      include: {
+        donor: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ─────────────────────────────────────────────
   // READ — NEARBY
   // ─────────────────────────────────────────────
 

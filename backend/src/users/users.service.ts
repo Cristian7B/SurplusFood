@@ -38,4 +38,12 @@ export class UsersService {
       data: { noShowCount: { increment: 1 } },
     });
   }
+
+  /** Saves or clears the Expo push token for a user. */
+  async updatePushToken(userId: string, expoPushToken: string | null): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken },
+    });
+  }
 }

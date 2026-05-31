@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Modal, Alert, RefreshControl
+  ActivityIndicator, Modal, RefreshControl
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -65,26 +66,41 @@ type ViewMode = 'map' | 'list';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
-  const { userName, role, logout } = useAuth();
+  const { user, role } = useAuth();
+  const userName = user?.name;
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [userCoord, setUserCoord] = useState<[number, number] | null>(null);
   const [surplusList, setSurplusList] = useState<NearbySurplus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<NearbySurplus | null>(null);
-  const [claiming, setClaiming] = useState(false);
+  const [hasAssignment, setHasAssignment] = useState(false);
   const cameraRef = useRef<Camera>(null);
   const udCircle = makeCircle(UD_CENTER.lon, UD_CENTER.lat, MAX_RADIUS_M);
 
   // ── Fetch nearby surplus ─────────────────────────────────────────────
   const fetchNearby = useCallback(async (lat: number, lon: number) => {
     try {
-      const res = await api.get(`/surplus/nearby?lat=${lat}&lon=${lon}&radius=${MAX_RADIUS_M}`);
-      setSurplusList(res.data ?? []);
+      const res = await api.get(`/surplus/nearby?lat=${UD_CENTER.lat}&lon=${UD_CENTER.lon}&radius=${MAX_RADIUS_M}`);
+      setSurplusList(res.data?.data ?? []);
     } catch (e: any) {
       console.warn('Error fetching nearby surplus:', e?.message);
     }
   }, []);
+
+  // ── Check if user has a pending assignment — re-runs every time screen focuses ─
+  const checkAssignment = useCallback(async () => {
+    if (role !== 'BENEFICIARY' && role !== 'CHARITY') return;
+    try {
+      const res = await api.get('/surplus/my-assignment');
+      const data = res.data?.data ?? null;
+      setHasAssignment(!!data?.id);
+    } catch {
+      setHasAssignment(false);
+    }
+  }, [role]);
+
+  useFocusEffect(useCallback(() => { checkAssignment(); }, [checkAssignment]));
 
   // ── Init location + fetch ────────────────────────────────────────────
   useEffect(() => {
@@ -96,11 +112,10 @@ export default function HomeScreen() {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         coord = [loc.coords.longitude, loc.coords.latitude];
       } else {
-        // Fallback to UD center for testing
         coord = [UD_CENTER.lon, UD_CENTER.lat];
       }
       setUserCoord(coord);
-      await fetchNearby(coord[1], coord[0]);
+      await Promise.all([fetchNearby(coord[1], coord[0]), checkAssignment()]);
       setLoading(false);
     })();
   }, []);
@@ -109,31 +124,8 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     if (!userCoord) return;
     setRefreshing(true);
-    await fetchNearby(userCoord[1], userCoord[0]);
+    await Promise.all([fetchNearby(userCoord[1], userCoord[0]), checkAssignment()]);
     setRefreshing(false);
-  };
-
-  // ── Claim a surplus ──────────────────────────────────────────────────
-  const handleClaim = async (item: NearbySurplus) => {
-    setClaiming(true);
-    try {
-      // The matching must be triggered by a DONOR/ADMIN - for testing we call
-      // the endpoint. In production the backend auto-matches on publish.
-      // Here we just call accept if already assigned, or inform the user.
-      await api.patch(`/surplus/${item.id}/accept`);
-      Alert.alert(
-        '✅ ¡Surplus reclamado!',
-        `Tienes hasta ${new Date(item.pickupEndAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} para recogerlo.`,
-        [{ text: 'Entendido', onPress: () => setSelectedItem(null) }]
-      );
-      // Refresh list
-      if (userCoord) fetchNearby(userCoord[1], userCoord[0]);
-    } catch (e: any) {
-      const msg = e?.response?.data?.message ?? 'El surplus puede ya no estar disponible.';
-      Alert.alert('No disponible', msg);
-    } finally {
-      setClaiming(false);
-    }
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -150,7 +142,12 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={styles.topRight}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/profile')}>
+          {(role === 'BENEFICIARY' || role === 'CHARITY') && (
+            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/history')}>
+              <Text style={{ fontSize: 18 }}>📋</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/dashboard')}>
             <Text style={{ fontSize: 18 }}>👤</Text>
           </TouchableOpacity>
           {(role === 'DONOR' || role === 'ADMIN') && (
@@ -160,6 +157,18 @@ export default function HomeScreen() {
           )}
         </View>
       </View>
+
+      {/* ── Assignment Banner (beneficiaries/charities with pending assignment) ── */}
+      {hasAssignment && (
+        <TouchableOpacity style={styles.assignmentBanner} onPress={() => router.push('/assignment')}>
+          <Text style={styles.assignmentBannerEmoji}>🔔</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.assignmentBannerTitle}>¡Tienes un surplus asignado!</Text>
+            <Text style={styles.assignmentBannerSub}>Toca para aceptar o rechazar</Text>
+          </View>
+          <Text style={styles.assignmentBannerArrow}>›</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── View Toggle ── */}
       <View style={styles.toggle}>
@@ -355,20 +364,22 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={[styles.claimBtn, claiming && styles.claimBtnLoading]}
-              onPress={() => handleClaim(selectedItem)}
-              disabled={claiming}
-            >
-              {claiming
-                ? <ActivityIndicator color={colors.white} />
-                : <Text style={styles.claimBtnText}>✋ Reclamar este surplus</Text>}
-            </TouchableOpacity>
-
-            <Text style={styles.modalDisclaimer}>
-              Al reclamar, confirmas que irás a recoger el alimento dentro del horario indicado.
-              Las inasistencias afectan tu puntaje de confiabilidad.
-            </Text>
+            {(role === 'BENEFICIARY' || role === 'CHARITY') && (
+              hasAssignment ? (
+                <TouchableOpacity
+                  style={styles.claimBtn}
+                  onPress={() => { setSelectedItem(null); router.push('/assignment'); }}
+                >
+                  <Text style={styles.claimBtnText}>🔔 Ver mi asignación pendiente</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.infoBox}>
+                  <Text style={styles.infoBoxText}>
+                    🤖 El algoritmo te asignará un surplus automáticamente y recibirás una notificación. No es necesario reclamarlo manualmente.
+                  </Text>
+                </View>
+              )
+            )}
           </View>
         )}
       </Modal>
@@ -489,7 +500,23 @@ const styles = StyleSheet.create({
   modalInfoLabel: { fontSize: 11, color: colors.textMuted, marginBottom: 4, letterSpacing: 0.3 },
   modalInfoValue: { fontSize: 14, fontWeight: '600', color: colors.text },
   claimBtn: { backgroundColor: colors.green, padding: 16, borderRadius: 12, alignItems: 'center' },
-  claimBtnLoading: { opacity: 0.7 },
   claimBtnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  modalDisclaimer: { fontSize: 11, color: colors.textMuted, textAlign: 'center', lineHeight: 17 },
+
+  // Assignment banner
+  assignmentBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#E8F5E9', paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#C8E6C9',
+  },
+  assignmentBannerEmoji: { fontSize: 22 },
+  assignmentBannerTitle: { fontSize: 13, fontWeight: '700', color: '#2E7D32' },
+  assignmentBannerSub: { fontSize: 12, color: '#388E3C', marginTop: 1 },
+  assignmentBannerArrow: { fontSize: 22, color: '#2E7D32', fontWeight: '600' },
+
+  // Info box inside modal
+  infoBox: {
+    backgroundColor: '#E3F2FD', borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: '#BBDEFB',
+  },
+  infoBoxText: { fontSize: 12, color: '#1565C0', lineHeight: 18, textAlign: 'center' },
 });

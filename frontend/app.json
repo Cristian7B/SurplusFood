@@ -1,3 +1,28 @@
 {
-  "expo": {}
+  "expo": {
+    "name": "SurplusFood",
+    "slug": "surplusfood",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "surplusfood",
+    "android": {
+      "package": "com.foodbridge.surplusfood",
+      "adaptiveIcon": {
+        "backgroundColor": "#5DBF95"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.foodbridge.surplusfood"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#5DBF95",
+          "defaultChannel": "default"
+        }
+      ]
+    ]
+  }
 }

@@ -195,7 +195,38 @@ export class SurplusController {
       dto.imageUrl = body.imageUrl;
     }
 
-    return this.surplusService.create(dto, user);
+    const surplus = await this.surplusService.create(dto, user);
+
+    // Auto-trigger matching after creation (fire-and-forget — does not affect the response)
+    void this.matchingService.match(surplus.id).catch(() => {
+      // Silently ignore if no candidates found or matching fails
+    });
+
+    return surplus;
+  }
+
+  // ──────────────────────────────────────────────
+  // GET /surplus/my-assignment
+  // ──────────────────────────────────────────────
+
+  @Get('my-assignment')
+  @ApiOperation({
+    summary: 'Get the current surplus assigned to the authenticated user',
+    description: 'Returns the ASSIGNED surplus for the current beneficiary/charity, or null.',
+  })
+  @ApiResponse({ status: 200, description: 'Assigned surplus or null.' })
+  async myAssignment(@CurrentUser() user: User): Promise<any> {
+    return this.surplusService.findAssignedTo((user as any).id);
+  }
+
+  @Get('my-history')
+  @ApiOperation({
+    summary: 'Get full assignment history for the authenticated user',
+    description: 'Returns all surpluses ever assigned to the current user, sorted by date.',
+  })
+  @ApiResponse({ status: 200, description: 'List of assigned surpluses.' })
+  async myHistory(@CurrentUser() user: User): Promise<any> {
+    return this.surplusService.findHistory((user as any).id);
   }
 
   // ──────────────────────────────────────────────

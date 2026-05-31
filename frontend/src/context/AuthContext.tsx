@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { registerForPushNotifications } from '../services/pushNotifications';
 
 export type UserRole = 'DONOR' | 'BENEFICIARY' | 'CHARITY' | 'ADMIN' | null;
 
@@ -65,6 +66,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setRole(userData.role ?? null);
     await AsyncStorage.setItem('token', newToken);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
+    // Register push token after login (fire-and-forget, errors logged not thrown)
+    registerForPushNotifications().catch((err) => {
+      console.warn('[Auth] Push registration error:', err?.message);
+    });
   };
 
   const logout = async () => {
@@ -78,7 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { email, role: presetRole } = TEST_USERS[preset];
     try {
       const res = await api.post('/auth/login', { email, password: TEST_PASSWORD });
-      const { access_token, user: userData } = res.data;
+      const { access_token, user: userData } = res.data.data;
       await login(access_token, userData ?? { role: presetRole, name: TEST_USERS[preset].label });
     } catch (e: any) {
       console.warn('[DEV] Test login fallback – backend offline?', e?.message);
