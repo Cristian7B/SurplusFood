@@ -67,6 +67,7 @@ model Surplus {
   status          SurplusStatus @default(PUBLISHED)
   donorId         String
   assignedUserId  String?
+  acceptedAt    DateTime? @map("accepted_at")
   /// Decimal latitude of the pickup point
   latitude        Float
   /// Decimal longitude of the pickup point

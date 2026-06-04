@@ -133,48 +133,67 @@ export default function AssignmentScreen() {
 
   // ── Surplus aceptado ────────────────────────────────────────────────────────
   if (accepted) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={{ width: 60 }} />
-          <Text style={styles.headerTitle}>Mi asignación</Text>
-          <View style={{ width: 60 }} />
-        </View>
-        <View style={styles.acceptedContainer}>
-          <Text style={styles.acceptedEmoji}>✅</Text>
-          <Text style={styles.acceptedTitle}>¡Surplus aceptado!</Text>
-          <Text style={styles.acceptedSub}>
-            {surplus.title}
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={{ width: 60 }} />
+        <Text style={styles.headerTitle}>Mi asignación</Text>
+        <View style={{ width: 60 }} />
+      </View>
+      <View style={styles.acceptedContainer}>
+        <Text style={styles.acceptedEmoji}>✅</Text>
+        <Text style={styles.acceptedTitle}>¡Surplus aceptado!</Text>
+        <Text style={styles.acceptedSub}>{surplus.title}</Text>
+
+        <View style={styles.pickupCard}>
+          <Text style={styles.pickupLabel}>Donante</Text>
+          <Text style={styles.pickupValue}>{surplus.donor.name ?? surplus.donor.email}</Text>
+          <View style={styles.pickupDivider} />
+          <Text style={styles.pickupLabel}>Horario de recogida</Text>
+          <Text style={styles.pickupValue}>
+            {formatTime(surplus.pickupStartAt)} – {formatTime(surplus.pickupEndAt)}
           </Text>
+          <View style={styles.pickupDivider} />
+          <Text style={styles.pickupLabel}>Tiempo restante</Text>
+          <Text style={[styles.pickupValue, { color: colors.greenDark }]}>
+            {formatExpiry(surplus.expirationAt)}
+          </Text>
+        </View>
 
-          <View style={styles.pickupCard}>
-            <Text style={styles.pickupLabel}>Donante</Text>
-            <Text style={styles.pickupValue}>{surplus.donor.name ?? surplus.donor.email}</Text>
-            <View style={styles.pickupDivider} />
-            <Text style={styles.pickupLabel}>Horario de recogida</Text>
-            <Text style={styles.pickupValue}>
-              {formatTime(surplus.pickupStartAt)} – {formatTime(surplus.pickupEndAt)}
-            </Text>
-            <View style={styles.pickupDivider} />
-            <Text style={styles.pickupLabel}>Tiempo restante</Text>
-            <Text style={[styles.pickupValue, { color: colors.greenDark }]}>
-              {formatExpiry(surplus.expirationAt)}
-            </Text>
-          </View>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoBoxText}>
+            📦 Ve al punto de recogida y toca "Marcar como recogido" cuando tengas el alimento.
+          </Text>
+        </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoBoxText}>
-              📦 El donante confirmará el pickup cuando vayas a recoger el alimento.
-              Tu puntaje de confiabilidad aumentará tras la confirmación.
-            </Text>
-          </View>
+        <TouchableOpacity
+          style={[styles.pickupBtn, acting && styles.btnDisabled]}
+          onPress={async () => {
+            setActing(true);
+            try {
+              await api.post(`/surplus/${surplus.id}/pickup`);
+              Alert.alert('¡Listo!', 'Recogida confirmada. ¡Gracias por participar! 🌿', [
+                { text: 'OK', onPress: () => router.replace('/home') },
+              ]);
+            } catch (e: any) {
+              Alert.alert('No se pudo confirmar', extractError(e));
+            } finally {
+              setActing(false);
+            }
+          }}
+          disabled={acting}
+        >
+          {acting
+            ? <ActivityIndicator color={colors.white} />
+            : <Text style={styles.pickupBtnText}>📦 Marcar como recogido</Text>}
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.homeBtn}
-            onPress={() => router.replace('/home')}
-          >
-            <Text style={styles.homeBtnText}>Volver al mapa</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.homeBtn}
+          onPress={() => router.replace('/home')}
+        >
+          <Text style={styles.homeBtnText}>Volver al mapa</Text>
+        </TouchableOpacity>
         </View>
       </View>
     );
@@ -343,4 +362,9 @@ const styles = StyleSheet.create({
   },
   backBtnText: { color: colors.greenDark, fontSize: 14, fontWeight: '500' },
   loadingText: { fontSize: 14, color: colors.textMuted, marginTop: 8 },
+  pickupBtn: {
+  width: '100%', backgroundColor: colors.greenDark,
+  padding: 16, borderRadius: 12, alignItems: 'center',
+},
+pickupBtnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
 });

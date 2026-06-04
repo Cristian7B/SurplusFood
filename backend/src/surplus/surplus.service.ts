@@ -346,7 +346,7 @@ export class SurplusService {
    * assigned to them by the matching engine.
    */
   async accept(id: string, requester: User): Promise<Surplus> {
-    const surplus = await this.findOne(id);
+  const surplus = await this.findOne(id);
 
     if (surplus.status !== SurplusStatus.ASSIGNED) {
       throw new BadRequestException('Surplus is not in ASSIGNED status.');
@@ -360,8 +360,11 @@ export class SurplusService {
       throw new BadRequestException('Cannot accept an expired surplus.');
     }
 
-    // Status stays ASSIGNED — acceptance is a confirmation, pickup is the next step
-    return surplus;
+    // Persist acceptance timestamp
+    return this.prisma.surplus.update({
+      where: { id },
+      data: { acceptedAt: new Date() },
+    });
   }
 
   // ─────────────────────────────────────────────

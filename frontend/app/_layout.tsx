@@ -24,7 +24,7 @@ export default function RootLayout() {
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
 
     // Handle tap on a notification (app in background or killed)
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    Notifications.addNotificationResponseReceivedListener((response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (data?.type === 'SURPLUS_ASSIGNED') {
         // Navigate to the assignment screen when user taps the notification
