@@ -189,7 +189,8 @@ export default function PublishSurplusScreen() {
       if (image) {
         formData.append('image', { uri: image, name: 'surplus.jpg', type: 'image/jpeg' } as any);
       }
-      await api.post('/surplus', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // Do NOT set Content-Type manually — React Native's XHR auto-adds the multipart boundary
+      await api.post('/surplus', formData);
       Alert.alert('✅ ¡Publicado!', 'Tu surplus fue publicado exitosamente.', [
         { text: 'Ver mapa',      onPress: () => router.push('/home') },
         { text: 'Publicar otro', onPress: () => {
@@ -198,8 +199,17 @@ export default function PublishSurplusScreen() {
           slideAnim.setValue(0);
         }},
       ]);
-    } catch {
-      Alert.alert('Error', 'No se pudo publicar el surplus. Asegúrate de estar autenticado.');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.message ?? err?.message ?? 'Error desconocido';
+      console.error('[PublishSurplus] error', status, serverMsg);
+      if (status === 401) {
+        Alert.alert('Sesión expirada', 'Tu sesión expiró. Por favor vuelve a iniciar sesión.');
+      } else if (status === 403) {
+        Alert.alert('Sin permiso', 'Tu cuenta no tiene rol de Donante. Verifica tu perfil.');
+      } else {
+        Alert.alert('Error al publicar', `${status ? `[${status}] ` : ''}${serverMsg}`);
+      }
     } finally {
       setPublishing(false);
     }

@@ -54,48 +54,49 @@ async function main() {
     },
   });
 
-  const beneficiary2 = await prisma.user.create({
-    data: {
-      email: 'beneficiary2@foodbridge.com',
-      password: passwordHash,
-      name: 'María Vecina',
-      role: Role.BENEFICIARY,
-      latitude: 4.6320,
-      longitude: -74.0750,
-      reliabilityScore: 0.8,
-      noShowCount: 1,
-    },
-  });
+  // const beneficiary2 = await prisma.user.create({
+  //   data: {
+  //     email: 'beneficiary2@foodbridge.com',
+  //     password: passwordHash,
+  //     name: 'María Vecina',
+  //     role: Role.BENEFICIARY,
+  //     latitude: 4.6320,
+  //     longitude: -74.0750,
+  //     reliabilityScore: 0.8,
+  //     noShowCount: 1,
+  //   },
+  // });
 
-  // Charity (Verified)
-  const charity1 = await prisma.user.create({
-    data: {
-      email: 'charity1@foodbridge.com',
-      password: passwordHash,
-      name: 'Comedor Comunitario San José',
-      role: Role.CHARITY,
-      latitude: 4.6360,
-      longitude: -74.0650,
-      isVerifiedCharity: true,
-      reliabilityScore: 1.0,
-      noShowCount: 0,
-    },
-  });
+  // // Charity (Verified)
+  // const charity1 = await prisma.user.create({
+  //   data: {
+  //     email: 'charity1@foodbridge.com',
+  //     password: passwordHash,
+  //     name: 'Comedor Comunitario San José',
+  //     role: Role.CHARITY,
+  //     latitude: 4.6360,
+  //     longitude: -74.0650,
+  //     isVerifiedCharity: true,
+  //     reliabilityScore: 1.0,
+  //     noShowCount: 0,
+  //   },
+  // });
 
-  // Admin
-  await prisma.user.create({
-    data: {
-      email: 'admin@foodbridge.com',
-      password: passwordHash,
-      name: 'Administrador FoodBridge',
-      role: Role.ADMIN,
-      latitude: 4.6351,
-      longitude: -74.0703,
-    },
-  });
+  // // Admin
+  // await prisma.user.create({
+  //   data: {
+  //     email: 'admin@foodbridge.com',
+  //     password: passwordHash,
+  //     name: 'Administrador FoodBridge',
+  //     role: Role.ADMIN,
+  //     latitude: 4.6351,
+  //     longitude: -74.0703,
+  //   },
+  // });
 
-  console.log(`✅ Created 6 users.`);
+  // console.log(`✅ Created 6 users.`);
 
+  console.log(`✅ Created 3 users.`);
   // 4. Create Surplus Posts
   console.log('🍕 Creating surplus items...');
 

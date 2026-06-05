@@ -13,11 +13,6 @@ import api from './api';
  * expo.extra.eas.projectId.
  */
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (!Device.isDevice) {
-    console.log('[Push] Skipped — running on simulator/emulator');
-    return null;
-  }
-
   // Request permissions
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;

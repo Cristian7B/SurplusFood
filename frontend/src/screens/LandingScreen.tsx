@@ -12,7 +12,7 @@ const CARDS = [
 ];
 
 const FEATURES = [
-  { icon: '🍱', title: 'Dona surplus', desc: 'Publica alimentos sobrantes en segundos.' },
+  { icon: '🍱', title: 'Dona surplus1', desc: 'Publica alimentos sobrantes en segundos.' },
   { icon: '🤝', title: 'Conecta comunidades', desc: 'Beneficiarios encuentran comida cerca.' },
   { icon: '🌱', title: 'Reduce el desperdicio', desc: 'Cada porción publicada importa.' },
 ];

@@ -174,14 +174,24 @@ export class SurplusController {
       targetDate.setUTCHours(hours, minutes, 0, 0);
 
       const expirationDate = new Date(targetDate.getTime() + 5 * 60 * 60 * 1000);
-
       dto.expirationAt = expirationDate.toISOString();
-      dto.pickupEndAt = expirationDate.toISOString();
 
-      const startOffset = new Date(expirationDate.getTime() - 2 * 60 * 60 * 1000);
-      const minStart = new Date(now.getTime() + 35 * 60 * 1000);
-      const finalStart = startOffset > minStart ? startOffset : minStart;
+      const minStart   = new Date(now.getTime() + 35 * 60 * 1000);          // now + 35 min
+      const maxStart   = new Date(now.getTime() + (4 * 60 - 1) * 60 * 1000); // now + 3h59m
+      const idealStart = new Date(expirationDate.getTime() - 2 * 60 * 60 * 1000); // expiry − 2h
+
+      const finalStart =
+        idealStart < minStart  ? minStart  :
+        idealStart > maxStart  ? maxStart  :
+        idealStart;
+
       dto.pickupStartAt = finalStart.toISOString();
+
+      const twoHAfterStart = new Date(finalStart.getTime() + 2 * 60 * 60 * 1000);
+      dto.pickupEndAt = (twoHAfterStart < expirationDate
+        ? twoHAfterStart
+        : expirationDate
+      ).toISOString();
     } else {
       dto.expirationAt = body.expirationAt ?? dto.expirationAt;
       dto.pickupStartAt = body.pickupStartAt ?? dto.pickupStartAt;
